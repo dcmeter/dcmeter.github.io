@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Måler Billede Generator</title>
+<style>
+  :root{
+    --navy:#1e3a5f;
+    --navy-light:#2d5a8c;
+    --red:#dc2626;
+    --amber:#fef3c7;
+    --amber-text:#92400e;
+    --bg:#f3f4f6;
+    --surface:#ffffff;
+    --border:#d9dce2;
+    --text:#111827;
+    --muted:#6b7280;
+    --canvas-empty:#e5e7eb;
+    --canvas-empty-text:#9ca3af;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --navy:#3a6ea8;
+      --navy-light:#4d84c0;
+      --red:#f87171;
+      --amber:#4a3a13;
+      --amber-text:#fcd34d;
+      --bg:#15181e;
+      --surface:#1d2129;
+      --border:#333944;
+      --text:#e8eaed;
+      --muted:#9aa1ac;
+      --canvas-empty:#262b34;
+      --canvas-empty-text:#6b7280;
+    }
+  }
+  :root[data-theme="dark"]{
+    --navy:#3a6ea8;
+    --navy-light:#4d84c0;
+    --red:#f87171;
+    --amber:#4a3a13;
+    --amber-text:#fcd34d;
+    --bg:#15181e;
+    --surface:#1d2129;
+    --border:#333944;
+    --text:#e8eaed;
+    --muted:#9aa1ac;
+    --canvas-empty:#262b34;
+    --canvas-empty-text:#6b7280;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding-inline:16px;
+    padding-block:24px 60px;
+  }
+  .wrap{max-width:960px;margin:0 auto;}
+  h1{font-size:21px;margin:0 0 4px;color:var(--text);font-weight:700;}
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:22px;}
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-size:14px;
+    margin:0 0 12px;
+    color:var(--text);
+    display:flex;align-items:center;gap:8px;
+    font-weight:700;
+  }
+  .step-num{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:21px;height:21px;border-radius:50%;
+    background:var(--navy);color:#fff;font-size:11.5px;font-weight:700;
+    flex-shrink:0;
+  }
+  .toggle-group{display:flex;gap:10px;}
+  .toggle-btn{
+    flex:1;
+    padding:12px;
+    border:2px solid var(--border);
+    border-radius:10px;
+    background:var(--surface);
+    cursor:pointer;
+    font-size:14.5px;
+    font-weight:600;
+    text-align:center;
+    transition:border-color .15s, background .15s, color .15s;
+    color:var(--text);
+  }
+  .toggle-btn:hover{border-color:var(--navy-light);}
+  .toggle-btn.active{
+    border-color:var(--navy);
+    background:var(--navy);
+    color:#fff;
+  }
+  .panels{display:flex;gap:16px;flex-wrap:wrap;}
+  .panel-box{flex:1;min-width:260px;}
+  .panel-box label.filelabel{
+    display:block;
+    border:2px dashed var(--border);
+    border-radius:10px;
+    padding:10px;
+    text-align:center;
+    cursor:pointer;
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .panel-box label.filelabel:hover{border-color:var(--navy-light);}
+  input[type=file]{display:none;}
+  canvas{
+    width:100%;
+    height:auto;
+    max-width:100%;
+    border-radius:8px;
+    border:1px solid var(--border);
+    cursor:crosshair;
+    touch-action:none;
+    display:block;
+    background:var(--canvas-empty);
+  }
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;}
+  .row-btns{display:flex;gap:8px;margin-top:8px;}
+  button.small{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:6px 10px;
+    font-size:12px;
+    cursor:pointer;
+    color:var(--text);
+  }
+  button.small:hover{background:var(--bg);}
+  textarea, input[type=text]{
+    width:100%;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:14px;
+    font-family:inherit;
+    resize:vertical;
+  }
+  textarea:focus, input[type=text]:focus, .toggle-btn:focus-visible, button:focus-visible{
+    outline:2px solid var(--navy-light);
+    outline-offset:1px;
+  }
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:var(--text);}
+  .generate-btn{
+    width:100%;
+    padding:15px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    font-size:15.5px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .generate-btn:hover{background:var(--navy-light);}
+  .generate-btn:disabled{background:var(--muted);cursor:not-allowed;}
+  #outputWrap{display:none;}
+  #output{width:100%;border-radius:10px;border:1px solid var(--border);margin-top:16px;max-width:100%;}
+  #downloadBtn{
+    display:none;
+    width:100%;
+    margin-top:12px;
+    background:var(--red);
+    color:#fff;
+    border:none;
+    padding:13px;
+    border-radius:8px;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+  }
+  #downloadBtn:hover{filter:brightness(1.08);}
+  #downloadBtn:disabled{opacity:.6;cursor:not-allowed;}
+  #saveStatus{font-size:12.5px;color:var(--muted);text-align:center;margin-top:8px;min-height:16px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📷 Måler Billede Generator</h1>
+  <div class="sub">Lav et annoteret måler-billede (oversigt + zoom + aflæsning) til Breezeway.</div>
+
+  <div class="card">
+    <h2><span class="step-num">1</span> Vælg målertype</h2>
+    <div class="toggle-group" role="group" aria-label="Vælg målertype">
+      <div class="toggle-btn active" id="btnEl" tabindex="0" role="button" onclick="setMeterType('el')">⚡ El-måler</div>
+      <div class="toggle-btn" id="btnVand" tabindex="0" role="button" onclick="setMeterType('vand')">💧 Vandmåler</div>
+      <div class="toggle-btn" id="btnVarme" tabindex="0" role="button" onclick="setMeterType('varme')">🔥 Varmemåler</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">2</span> Upload billeder og markér måleren</h2>
+    <div class="panels">
+      <div class="panel-box">
+        <label class="filelabel" for="file1">📍 Oversigtsbillede (langt væk – viser området)</label>
+        <input type="file" id="file1" accept="image/*" capture="environment">
+        <canvas id="canvas1" width="560" height="400"></canvas>
+        <div class="hint">Klik og træk på billedet for at tegne en cirkel om måleren.</div>
+        <div class="row-btns">
+          <button class="small" onclick="clearCircle(1)">Ryd cirkel</button>
+        </div>
+      </div>
+      <div class="panel-box">
+        <label class="filelabel" for="file2">🔍 Nærbillede (viser aflæsningen)</label>
+        <input type="file" id="file2" accept="image/*" capture="environment">
+        <canvas id="canvas2" width="560" height="400"></canvas>
+        <div class="hint">Klik og træk på billedet for at tegne en cirkel om selve aflæsningen.</div>
+        <div class="row-btns">
+          <button class="small" onclick="clearCircle(2)">Ryd cirkel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">3</span> Vejledning til aflæsning</h2>
+    <div class="field">
+      <label for="instructions">Tekst der vises øverst på billedet (redigerbar)</label>
+      <textarea id="instructions" rows="2"></textarea>
+    </div>
+    <div class="field">
+      <label for="reading">Aflæsning / tal (valgfrit — vises som banner nederst)</label>
+      <input type="text" id="reading" placeholder="F.eks. 566,62 eller 1234567">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step-num">4</span> Generér</h2>
+    <button class="generate-btn" id="genBtn" onclick="generateComposite()">Generér billede</button>
+    <div id="outputWrap">
+      <img id="output" alt="Genereret måler-billede">
+    </div>
+    <button id="downloadBtn" onclick="downloadImage()">⬇ Download billede (JPG)</button>
+    <div id="saveStatus"></div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_TEXT = {
+  el: "El-måler: Aflæses ved ankomst og afrejse, og tastes i lejebeviset.",
+  vand: "Vandmåler: Aflæses ved ankomst og afrejse. Tallet aflæses med komma foran de sidste 2 cifre. Eksempel: 566,62",
+  varme: "Varmemåler: Aflæses ved ankomst og afrejse, og tastes i lejebeviset. Tallet aflæses med komma foran de sidste cifre."
+};
+
+const state = {
+  meterType: 'el',
+  img1: null, img2: null,
+  circle1: null, circle2: null,
+  fit1: null, fit2: null,
+  lastBlob: null, lastFilename: null
+};
+
+document.getElementById('instructions').value = DEFAULT_TEXT.el;
+
+function setMeterType(type){
+  state.meterType = type;
+  document.getElementById('btnEl').classList.toggle('active', type==='el');
+  document.getElementById('btnVand').classList.toggle('active', type==='vand');
+  document.getElementById('btnVarme').classList.toggle('active', type==='varme');
+  const ta = document.getElementById('instructions');
+  // only overwrite if it still matches one of the defaults (avoid clobbering edits)
+  const isDefault = Object.values(DEFAULT_TEXT).includes(ta.value) || ta.value.trim()==='';
+  if(isDefault){
+    ta.value = DEFAULT_TEXT[type];
+  }
+}
+['btnEl','btnVand','btnVarme'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{
+    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); document.getElementById(id).click(); }
+  });
+});
+
+function containFit(iw, ih, dw, dh){
+  const scale = Math.min(dw/iw, dh/ih);
+  const w = iw*scale, h = ih*scale;
+  return { w, h, x:(dw-w)/2, y:(dh-h)/2 };
+}
+
+function drawPanelImage(ctx, img, px, py, pw, ph){
+  ctx.fillStyle = '#e5e7eb';
+  ctx.fillRect(px, py, pw, ph);
+  const fit = containFit(img.width, img.height, pw, ph);
+  ctx.drawImage(img, px+fit.x, py+fit.y, fit.w, fit.h);
+  fit.x0 = px; fit.y0 = py;
+  return fit;
+}
+
+function fracToScreen(circle, fit){
+  return {
+    x: fit.x0 + fit.x + circle.fx*fit.w,
+    y: fit.y0 + fit.y + circle.fy*fit.h,
+    r: circle.fr*fit.w
+  };
+}
+
+function drawCircleMark(ctx, x, y, r){
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = Math.max(3, r*0.07);
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.stroke();
+}
+
+function drawArrow(ctx, x1,y1,x2,y2){
+  ctx.strokeStyle = '#dc2626';
+  ctx.fillStyle = '#dc2626';
+  ctx.lineWidth = Math.max(6, (x2-x1)*0.012);
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+  const angle = Math.atan2(y2-y1, x2-x1);
+  const headLen = Math.max(24, ctx.lineWidth*3.5);
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2 - headLen*Math.cos(angle-Math.PI/6), y2 - headLen*Math.sin(angle-Math.PI/6));
+  ctx.lineTo(x2 - headLen*Math.cos(angle+Math.PI/6), y2 - headLen*Math.sin(angle+Math.PI/6));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function redrawPreview(num){
+  const canvas = document.getElementById('canvas'+num);
+  const ctx = canvas.getContext('2d');
+  const img = state['img'+num];
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(img){
+    const fit = drawPanelImage(ctx, img, 0, 0, canvas.width, canvas.height);
+    state['fit'+num] = fit;
+    const circle = state['circle'+num];
+    if(circle){
+      const s = fracToScreen(circle, fit);
+      drawCircleMark(ctx, s.x, s.y, s.r);
+    }
+  } else {
+    ctx.fillStyle = '#e5e7eb';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Intet billede endnu', canvas.width/2, canvas.height/2);
+    ctx.textAlign = 'left';
+  }
+}
+
+function loadImageFile(file, num){
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state['img'+num] = img;
+      state['circle'+num] = null;
+      redrawPreview(num);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('file1').addEventListener('change', e => {
+  if(e.target.files[0]) loadImageFile(e.target.files[0], 1);
+});
+document.getElementById('file2').addEventListener('change', e => {
+  if(e.target.files[0]) loadImageFile(e.target.files[0], 2);
+});
+
+function clearCircle(num){
+  state['circle'+num] = null;
+  redrawPreview(num);
+}
+
+function getPos(evt, canvas){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+  const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+  return { x: (clientX-rect.left)*scaleX, y: (clientY-rect.top)*scaleY };
+}
+
+function attachDrag(num){
+  const canvas = document.getElementById('canvas'+num);
+  let dragging = false, start = null;
+
+  function down(evt){
+    if(!state['img'+num]) return;
+    evt.preventDefault();
+    dragging = true;
+    start = getPos(evt, canvas);
+  }
+  function move(evt){
+    if(!dragging) return;
+    evt.preventDefault();
+    const pos = getPos(evt, canvas);
+    const r = Math.hypot(pos.x-start.x, pos.y-start.y);
+    redrawPreview(num);
+    const ctx = canvas.getContext('2d');
+    drawCircleMark(ctx, start.x, start.y, r);
+  }
+  function up(evt){
+    if(!dragging) return;
+    dragging = false;
+    const pos = getPos(evt.changedTouches ? {clientX:evt.changedTouches[0].clientX, clientY:evt.changedTouches[0].clientY} : evt, canvas);
+    const r = Math.hypot(pos.x-start.x, pos.y-start.y);
+    if(r > 5){
+      const fit = state['fit'+num];
+      state['circle'+num] = {
+        fx: (start.x - fit.x0 - fit.x) / fit.w,
+        fy: (start.y - fit.y0 - fit.y) / fit.h,
+        fr: r / fit.w
+      };
+    }
+    redrawPreview(num);
+  }
+
+  canvas.addEventListener('mousedown', down);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+  canvas.addEventListener('touchstart', down, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', up);
+}
+attachDrag(1);
+attachDrag(2);
+redrawPreview(1);
+redrawPreview(2);
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(' ');
+  let line = '';
+  let curY = y;
+  let linesDrawn = 0;
+  for(let n=0; n<words.length; n++){
+    const testLine = line + words[n] + ' ';
+    if(ctx.measureText(testLine).width > maxWidth && n > 0 && linesDrawn < 1){
+      ctx.fillText(line, x, curY);
+      line = words[n] + ' ';
+      curY += lineHeight;
+      linesDrawn++;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line, x, curY);
+}
+
+function generateComposite(){
+  if(!state.img1 || !state.img2){
+    alert('Upload venligst begge billeder (oversigt og nærbillede) først.');
+    return;
+  }
+  const reading = document.getElementById('reading').value.trim();
+  // Fixed output size: 1400 x 900 px
+  const W = 1400, H = 900, titleH = 90, bannerH = reading ? 110 : 0;
+  const gap = 12;
+  const panelH = H - titleH - bannerH;
+  const panelW = (W - gap) / 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // opaque white base — JPEG has no alpha channel
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#f3f4f6';
+  ctx.fillRect(0,0,W,H);
+
+  // title bar
+  ctx.fillStyle = '#1e3a5f';
+  ctx.fillRect(0,0,W,titleH);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px Arial';
+  ctx.textBaseline = 'alphabetic';
+  const titles = { el: '⚡ El-måler', vand: '💧 Vandmåler', varme: '🔥 Varmemåler' };
+  const title = titles[state.meterType] || titles.el;
+  ctx.fillText(title, 24, 36);
+  ctx.font = '15px Arial';
+  ctx.fillStyle = '#cbd5e1';
+  wrapText(ctx, document.getElementById('instructions').value, 24, 62, W-48, 19);
+
+  // panels
+  const fit1 = drawPanelImage(ctx, state.img1, 0, titleH, panelW, panelH);
+  const fit2 = drawPanelImage(ctx, state.img2, panelW+gap, titleH, panelW, panelH);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(panelW, titleH, gap, panelH);
+
+  let s1=null, s2=null;
+  if(state.circle1){ s1 = fracToScreen(state.circle1, fit1); drawCircleMark(ctx, s1.x, s1.y, s1.r); }
+  if(state.circle2){ s2 = fracToScreen(state.circle2, fit2); drawCircleMark(ctx, s2.x, s2.y, s2.r); }
+  if(s1 && s2){
+    drawArrow(ctx, s1.x + s1.r, s1.y, s2.x - s2.r, s2.y);
+  }
+
+  // banner
+  if(bannerH){
+    const by = titleH + panelH;
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillRect(panelW+gap, by, panelW, bannerH);
+
+    // split into a black "main" part and a red "decimal" part on whichever
+    // separator is present (comma or period) — applies to both meter types
+    let mainText = reading, redText = '';
+    const sepIndex = Math.max(reading.indexOf(','), reading.indexOf('.'));
+    if(sepIndex !== -1){
+      mainText = reading.slice(0, sepIndex+1);
+      redText = reading.slice(sepIndex+1);
+    }
+
+    // auto-fit: shrink font until the combined text fits comfortably in the banner
+    const availableW = panelW - 60;
+    let fontSize = 62;
+    ctx.textBaseline = 'middle';
+    while(fontSize > 22){
+      ctx.font = 'bold ' + fontSize + 'px Arial';
+      const totalW = ctx.measureText(mainText).width + ctx.measureText(redText).width;
+      if(totalW <= availableW) break;
+      fontSize -= 4;
+    }
+    ctx.font = 'bold ' + fontSize + 'px Arial';
+    const mainW = ctx.measureText(mainText).width;
+    const redW = ctx.measureText(redText).width;
+    const totalW = mainW + redW;
+    const startX = panelW + gap + (panelW - totalW) / 2;
+    const centerY = by + bannerH/2;
+
+    ctx.fillStyle = '#111827';
+    ctx.fillText(mainText, startX, centerY);
+    if(redText){
+      ctx.fillStyle = '#dc2626';
+      ctx.fillText(redText, startX + mainW, centerY);
+    }
+  }
+
+  const fileNames = { el: 'elmaaler', vand: 'vandmaaler', varme: 'varmemaaler' };
+  const filename = (fileNames[state.meterType] || 'maaler') + '_' + Date.now() + '.jpg';
+
+  canvas.toBlob(blob => {
+    state.lastBlob = blob;
+    state.lastFilename = filename;
+    const url = URL.createObjectURL(blob);
+    const out = document.getElementById('output');
+    out.src = url;
+    document.getElementById('outputWrap').style.display = 'block';
+    const btn = document.getElementById('downloadBtn');
+    btn.style.display = 'block';
+    btn.disabled = false;
+    document.getElementById('saveStatus').textContent = '';
+    document.getElementById('outputWrap').scrollIntoView({behavior:'smooth', block:'center'});
+  }, 'image/jpeg', 0.92);
+}
+
+function downloadImage(){
+  if(!state.lastBlob) return;
+  const status = document.getElementById('saveStatus');
+  const url = URL.createObjectURL(state.lastBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = state.lastFilename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  status.textContent = '✓ Billedet downloades.';
+}
+</script>
+</body>
+</html>
